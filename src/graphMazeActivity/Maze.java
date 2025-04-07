@@ -2,12 +2,10 @@ package graphMazeActivity;
 
 import java.util.Random;
 import java.awt.Color;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 
 /**
  *  Created by Professor Josh Hug for UCB's Graphs Lab
- *  Updated for COMP128 to use java.beans as java.observer is deprecated 
+ *  Updated for COMP128 to use kiltgraphics
  **/
 
 
@@ -15,16 +13,28 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class Maze implements PropertyChangeListener{
+import edu.macalester.graphics.CanvasWindow;
+import edu.macalester.graphics.Ellipse;
+import edu.macalester.graphics.GraphicsText;
+import edu.macalester.graphics.Line;
+
+public class Maze {
+
+    private int N;                 // dimension of maze
+    private boolean[][] north;     // is there a wall to north of cell i, j
+    private boolean[][] east;
+    private boolean[][] south;
+    private boolean[][] west;
+    private static Random rgen;
+    public static int DRAW_DELAY_MS = 50;
+    private CanvasWindow canvas;
 
     public enum MazeType {
         SINGLE_GAP, POPEN_SOLVABLE
     }
 
-    @Override
-    public void propertyChange(PropertyChangeEvent event) {
-        MazeExplorer me = (MazeExplorer) event.getSource();
-        StdDraw.clear();
+    public void updateDrawing(MazeExplorer me) {
+        canvas.removeAll();
         draw();
         for (int i = 0; i < N * N; i += 1) {
             if (me.marked[i]) {
@@ -37,7 +47,8 @@ public class Maze implements PropertyChangeListener{
             }
         }
 
-        StdDraw.show(DRAW_DELAY_MS);
+        canvas.draw();
+        canvas.pause(DRAW_DELAY_MS);
         
     }
 
@@ -171,8 +182,7 @@ public class Maze implements PropertyChangeListener{
 
     /** Initializes maze based on parameters set up by constructors. */
     private void init(int rseed, double p, MazeType mt) {
-        StdDraw.setXscale(0, N+2);
-        StdDraw.setYscale(0, N+2);
+        canvas = new CanvasWindow("Maze Solver", 512, 512);
         rgen = new Random(rseed);
         if (mt == MazeType.SINGLE_GAP) {
             generateSingleGapMaze();
@@ -180,7 +190,6 @@ public class Maze implements PropertyChangeListener{
         if (mt == MazeType.POPEN_SOLVABLE) {
             generatePopenSolvableMaze(p);
         }
-
     }
 
 
@@ -310,16 +319,22 @@ public class Maze implements PropertyChangeListener{
 
     /** Draws a filled circle of desired color c in cell i. */
     private void draw(int i, Color c) {
-        StdDraw.setPenColor(c);
         int x = toX(i);
         int y = toY(i);
-        StdDraw.filledCircle(x + 0.5, y + 0.5, 0.25);
+        Ellipse e = new Ellipse(0, 0, scaleX(0.5), scaleX(0.5));
+        e.setCenter(scaleX(x + 0.5), scaleY(y + 0.5));
+        e.setFillColor(c);
+        e.setFilled(true);
+        canvas.add(e);
     }
 
     /** Draws a filled circle of desired color c in cell i. */
     private void draw(int x, int y, Color c) {
-        StdDraw.setPenColor(c);
-        StdDraw.filledCircle(x + 0.5, y + 0.5, 0.25);
+        Ellipse e = new Ellipse(0, 0, scaleX(0.5), scaleX(0.5));
+        e.setCenter(scaleX(x + 0.5), scaleY(y + 0.5));
+        e.setFillColor(c);
+        e.setFilled(true);
+        canvas.add(e);
     }
 
     /* Draws the state of cell i, including any back edges. */
@@ -327,12 +342,18 @@ public class Maze implements PropertyChangeListener{
         int x = toX(i);
         int y = toY(i);
         if (me.marked[i]) {
-            StdDraw.setPenColor(StdDraw.BLUE);
-            StdDraw.filledCircle(x + 0.5, y + 0.5, 0.25);
+            Ellipse e = new Ellipse(0,0, scaleX(0.5), scaleX(0.5));
+            e.setCenter(scaleX(x + 0.5), scaleY(y + 0.5));
+            e.setFillColor(Color.BLUE);
+            e.setFilled(true);
+            canvas.add(e);
         }
         if (me.distTo[i] < Integer.MAX_VALUE) {
-            StdDraw.setPenColor(StdDraw.WHITE);
-            StdDraw.text(x + 0.5, y + 0.5, Integer.toString(me.distTo[i]));
+            GraphicsText text = new GraphicsText(Integer.toString(me.distTo[i]));
+            text.setFillColor(Color.WHITE);
+            text.setFilled(true);
+            text.setCenter( scaleX(x+0.5), scaleY(y+0.5));
+            canvas.add(text);
         }
     }
 
@@ -341,22 +362,43 @@ public class Maze implements PropertyChangeListener{
         int x = toX(i);
         int y = toY(i);
         if (me.edgeTo[i] < Integer.MAX_VALUE) {
-            StdDraw.setPenColor(StdDraw.MAGENTA);
             int fromX = toX(me.edgeTo[i]);
             int fromY = toY(me.edgeTo[i]);
-            StdDraw.line(fromX + 0.5, fromY + 0.5, x + 0.5, y + 0.5);
+            Line l = new Line(scaleX(fromX + 0.5), scaleY(fromY + 0.5), scaleX(x + 0.5), scaleY(y + 0.5));
+            l.setStrokeColor(Color.MAGENTA);
+            l.setStroked(true);
+            canvas.add(l);
         }
     }
 
     // draw the maze
     public void draw() {
-        StdDraw.setPenColor(StdDraw.BLACK);
         for (int x = 1; x <= N; x++) {
             for (int y = 1; y <= N; y++) {
-                if (south[x][y]) StdDraw.line(x, y, x + 1, y);
-                if (north[x][y]) StdDraw.line(x, y + 1, x + 1, y + 1);
-                if (west[x][y])  StdDraw.line(x, y, x, y + 1);
-                if (east[x][y])  StdDraw.line(x + 1, y, x + 1, y + 1);
+                if (south[x][y]) {
+                    Line l = new Line(scaleX(x), scaleY(y), scaleX(x + 1), scaleY(y));
+                    l.setStrokeColor(Color.BLACK);
+                    l.setStroked(true);
+                    canvas.add(l);
+                }
+                if (north[x][y]) { 
+                    Line l = new Line(scaleX(x), scaleY(y + 1), scaleX(x + 1), scaleY(y + 1));
+                    l.setStrokeColor(Color.BLACK);
+                    l.setStroked(true);
+                    canvas.add(l);
+                }
+                if (west[x][y]) {
+                    Line l = new Line(scaleX(x), scaleY(y), scaleX(x), scaleY(y + 1));
+                    l.setStrokeColor(Color.BLACK);
+                    l.setStroked(true);
+                    canvas.add(l);
+                }
+                if (east[x][y]) {
+                    Line l = new Line(scaleX(x + 1), scaleY(y), scaleX(x + 1), scaleY(y + 1));
+                    l.setStrokeColor(Color.BLACK);
+                    l.setStroked(true);
+                    canvas.add(l);
+                }
             }
         }
     }
@@ -366,12 +408,17 @@ public class Maze implements PropertyChangeListener{
         for (int i = 0; i < V(); i += 1) {
             int x = toX(i);
             int y = toY(i);
-            StdDraw.setPenColor(StdDraw.RED);
-            StdDraw.filledCircle(x + 0.5, y + 0.5, 0.25);
-            StdDraw.setPenColor(StdDraw.WHITE);
-            StdDraw.text(x + 0.5, y + 0.5, Integer.toString(i));
+            Ellipse e = new Ellipse(0,0, scaleX(0.5), scaleX(0.5));
+            e.setCenter(scaleX(x + 0.5), scaleY(y + 0.5));
+            e.setFillColor(Color.RED);
+            e.setFilled(true);
+            canvas.add(e);
+            GraphicsText text = new GraphicsText(Integer.toString(i));
+            text.setFillColor(Color.WHITE);
+            text.setFilled(true);
+            text.setCenter( scaleX(x+0.5), scaleY(y+0.5));
+            canvas.add(text);
         }
-        StdDraw.show();
     }
 
     /* Draws the maze with all spots numbered by x, y coordinates. */
@@ -379,22 +426,21 @@ public class Maze implements PropertyChangeListener{
         for (int i = 0; i < V(); i += 1) {
             int x = toX(i);
             int y = toY(i);
-            StdDraw.setPenColor(StdDraw.RED);
-            StdDraw.filledCircle(x + 0.5, y + 0.5, 0.25);
-            StdDraw.setPenColor(StdDraw.WHITE);
-            StdDraw.text(x + 0.5, y + 0.5, Integer.toString(x) + ", " + Integer.toString(y));
+            Ellipse e = new Ellipse(0,0, scaleX(0.5), scaleX(0.5));
+            e.setCenter(scaleX(x + 0.5), scaleY(y + 0.5));
+            e.setFillColor(Color.RED);
+            e.setFilled(true);
+            canvas.add(e);
+            GraphicsText text = new GraphicsText(Integer.toString(x) + ", " + Integer.toString(y));
+            text.setStrokeColor(Color.WHITE);
+            text.setStroked(true);
+            text.setCenter( scaleX(x+0.5), scaleY(y+0.5));
+            canvas.add(text);
         }
-        StdDraw.show();
     }
 
-
-    private int N;                 // dimension of maze
-    private boolean[][] north;     // is there a wall to north of cell i, j
-    private boolean[][] east;
-    private boolean[][] south;
-    private boolean[][] west;
-    private static Random rgen;
-    public static int DRAW_DELAY_MS = 50;
-
+    // helper functions that scale from user coordinates to screen coordinates and back
+    private double scaleX(double x) { return canvas.getWidth()  * (x) / (N+2); }
+    private double scaleY(double y) { return canvas.getHeight() * ((N+2) - y) / (N+2); }
 }
 

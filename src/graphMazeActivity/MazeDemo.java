@@ -1,6 +1,6 @@
 /**
  *  Created by Professor Josh Hug for UCB's Graphs Lab
- *  Updated for COMP128 to use java.beans as java.observer is deprecated 
+ *  Updated for COMP128 to use kiltgraphics
  **/
 
 
